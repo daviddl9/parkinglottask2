@@ -118,7 +118,7 @@ class GeneratePDDL_Stationary :
         for var_name, var_type in parameters :
             parameter_string += " ?" + var_name + " - " + var_type
         parameter_string += ") \n"
-        
+
         precondition_string = ":precondition " + precondition_string + "\n"
         effect_string = ":effect " + effect_string + "\n"
         action_string += parameter_string + precondition_string + effect_string
