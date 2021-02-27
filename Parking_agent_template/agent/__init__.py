@@ -22,20 +22,24 @@ PDDL_FILE_ABSOLUTE_PATH = ""
 #                {'lanes' : [LaneSpec(7, [0, 0])] *10,'width' :20, 'seed' : 125}]
 
 ### Sample test cases for Crossing Task
+# test_config = [{'lanes' : [LaneSpec(6, [-2, -2])] *2 + [LaneSpec(6, [-5, -5])] *2 +
+#                           [LaneSpec(5, [-4, -4])] *2 + [LaneSpec(5, [-2, -2])] *1, 'width' :30, 'seed' : 101},
+#                {'lanes': [LaneSpec(3, [-1, -1])] * 3, 'width': 5, 'seed': 12},
+#                {'lanes' : [LaneSpec(2, [-1, -1])] *3,'width' :5, 'seed': 25},
+#                {'lanes' : [LaneSpec(3, [-1, -1])] *4,'width' :10, 'seed': 125},
+#                {'lanes' : [LaneSpec(4, [-1, -1])] *4,'width' :10, 'seed': 28},
+#                {'lanes' : [LaneSpec(8, [-1, -1])] *7,'width' :20, 'seed': 119},
+#                {'lanes' : [LaneSpec(7, [-2, -2])] *10,'width' :20, 'seed': 21},
+#                {'lanes' : [LaneSpec(7, [-3, -3])] *2 + [LaneSpec(6, [-4, -4])] *2 +
+#                           [LaneSpec(6, [-4, -4])] *2 + [LaneSpec(6, [-3, -3])] *2 +
+#                           [LaneSpec(5, [-2, -2])] *2 + [LaneSpec(5, [-3, -3])] *2 ,  'width' :35, 'seed' : 40}
+#                ]
+# test_case_number = 5 # Change the index for a different test case
 test_config = [{'lanes' : [LaneSpec(6, [-2, -2])] *2 + [LaneSpec(6, [-5, -5])] *2 +
-                          [LaneSpec(5, [-4, -4])] *2 + [LaneSpec(5, [-2, -2])] *1, 'width' :30, 'seed' : 101},
-               {'lanes': [LaneSpec(3, [-1, -1])] * 3, 'width': 5, 'seed': 12},
-               {'lanes' : [LaneSpec(2, [-1, -1])] *3,'width' :5, 'seed': 25},
-               {'lanes' : [LaneSpec(3, [-1, -1])] *4,'width' :10, 'seed': 125},
-               {'lanes' : [LaneSpec(4, [-1, -1])] *4,'width' :10, 'seed': 28},
-               {'lanes' : [LaneSpec(8, [-1, -1])] *7,'width' :20, 'seed': 119},
-               {'lanes' : [LaneSpec(7, [-2, -2])] *10,'width' :20, 'seed': 21},
-               {'lanes' : [LaneSpec(7, [-3, -3])] *2 + [LaneSpec(6, [-4, -4])] *2 +
-                          [LaneSpec(6, [-4, -4])] *2 + [LaneSpec(6, [-3, -3])] *2 +
-                          [LaneSpec(5, [-2, -2])] *2 + [LaneSpec(5, [-3, -3])] *2 ,  'width' :35, 'seed' : 40}
-               ]
+                          [LaneSpec(5, [-4, -4])] *2 + [LaneSpec(5, [-2, -2])] *1, 'width' :30, 'seed' : 101}]
 
-test_case_number = 5 # Change the index for a different test case
+test_case_number = 0 # Change the index for a different test case
+
 LANES = test_config[test_case_number]['lanes']
 WIDTH = test_config[test_case_number]['width']
 RANDOM_SEED = test_config[test_case_number]['seed']
@@ -221,27 +225,17 @@ class GeneratePDDL_Stationary :
                 (at obj23 pos2) (in-city pos1 cit1) (in-city apt1 cit1) (in-city pos2 cit2) (in-city apt2 cit2)" 
         '''
 
-        init_string = ""
+        init_string = "(at pt{}pt{} agent1)".format(self.state.agent.position.x, self.state.agent.position.y)
+        init_string += "(state_time t0)"
         for car in self.state.cars:
-            car_speed = car.speed_range[0]
-            car_x = car.position.x
-            init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, 0)
+            car_x, car_y, car_speed = car.position.x, abs(car.speed_range[0])
+            init_string += "(blocked pt{}pt{} t{})".format(car_x, car_y, 0)
 
             max_time = abs(self.state.agent.position.x - self.state.finish_position.x)
             for t in range(1, max_time + 1):
-                if abs(car_speed) == 1:
-                    car_x -= 1
+                for i in range(1, car_speed + 1):
+                    car_x = car_x - 1 if car_x - 1 >= 0 else car_x = car_x - 1 + self.width
                     init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
-                else:
-                    for i in range(abs(car_speed)):
-                        car_x -= 1
-                        if car_x < 0:
-                            car_x = self.width - 1
-                        init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
-
-        init_string += "(at pt{}pt{} agent1)".format(self.state.agent.position.x, self.state.agent.position.y)
-
-        init_string += "(state_time t0)"
 
         for w in range(self.width):
             for lane in range(self.num_lanes):
