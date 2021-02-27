@@ -35,7 +35,7 @@ test_config = [{'lanes' : [LaneSpec(6, [-2, -2])] *2 + [LaneSpec(6, [-5, -5])] *
                           [LaneSpec(5, [-2, -2])] *2 + [LaneSpec(5, [-3, -3])] *2 ,  'width' :35, 'seed' : 40}
                ]
 
-test_case_number = 7 # Change the index for a different test case
+test_case_number = 5 # Change the index for a different test case
 LANES = test_config[test_case_number]['lanes']
 WIDTH = test_config[test_case_number]['width']
 RANDOM_SEED = test_config[test_case_number]['seed']
@@ -221,56 +221,54 @@ class GeneratePDDL_Stationary :
                 (at obj23 pos2) (in-city pos1 cit1) (in-city apt1 cit1) (in-city pos2 cit2) (in-city apt2 cit2)" 
         '''
 
-        state = self.state
-        car_string = ""
-        for car in state.cars:
-            car_speed = car.speed_range[0] # Assuming constant speed so max=min
+        init_string = ""
+        for car in self.state.cars:
+            car_speed = car.speed_range[0]
             car_x = car.position.x
-            car_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, 0)  # Blocked at cars' initial positions (time 0)
+            init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, 0)
 
-            max_time = abs(state.agent.position.x - state.finish_position.x)
+            max_time = abs(self.state.agent.position.x - self.state.finish_position.x)
             for t in range(1, max_time + 1):
                 if abs(car_speed) == 1:
                     car_x -= 1
-                    car_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
+                    init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
                 else:
-                    for i in range(0, abs(car_speed)):
+                    for i in range(abs(car_speed)):
                         car_x -= 1
                         if car_x < 0:
                             car_x = self.width - 1
-                        car_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
+                        init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
 
-        agent_string = "(at pt{}pt{} agent1)".format(state.agent.position.x, state.agent.position.y)
+        init_string += "(at pt{}pt{} agent1)".format(self.state.agent.position.x, self.state.agent.position.y)
 
-        time_string = "(state_time t0)"
+        init_string += "(state_time t0)"
 
-        next_string = ""
         for w in range(self.width):
             for lane in range(self.num_lanes):
-                if lane == 0:
-                    up_next_y = lane
-                    down_next_y = lane + 1
-                elif lane == self.num_lanes - 1:
+                if lane == self.num_lanes - 1:
                     down_next_y = lane
                     up_next_y = lane - 1
+                elif lane == 0:
+                    up_next_y = lane
+                    down_next_y = lane + 1
                 else:
                     up_next_y = lane - 1
                     down_next_y = lane + 1
                 forward_next_y = lane
                 for t in range(self.width - 1):
-                    next_string += ("(up_next pt{}pt{} pt{}pt{} t{} t{})"
+                    # fully observable environment, so specify all the possible moves in the init state
+                    init_string += ("(up_next pt{}pt{} pt{}pt{} t{} t{})"
                                     "(down_next pt{}pt{} pt{}pt{} t{} t{})"
-                                    "(forward3_next pt{}pt{} pt{}pt{} t{} t{})"
+                                    "(forward1_next pt{}pt{} pt{}pt{} t{} t{})"
                                     "(forward2_next pt{}pt{} pt{}pt{} t{} t{})"
-                                    "(forward1_next pt{}pt{} pt{}pt{} t{} t{})").format(
+                                    "(forward3_next pt{}pt{} pt{}pt{} t{} t{})").format(
                         w, lane, w-1, up_next_y, t, t+1,
                         w, lane, w-1, down_next_y, t, t+1,
-                        w, lane, w-3, forward_next_y, t, t+1,
+                        w, lane, w-1, forward_next_y, t, t+1,
                         w, lane, w-2, forward_next_y, t, t+1,
-                        w, lane, w-1, forward_next_y, t, t+1
+                        w, lane, w-3, forward_next_y, t, t+1
                     )
 
-        init_string = car_string + agent_string + next_string + time_string
         return init_string
 
     def generateGoalString(self) :
@@ -329,16 +327,20 @@ def generateDomainPDDLFile(gen):
     (at ?pt ?car) : car is at gridcell pt.
     (up_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes the UP action from pt1
     (down_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes the DOWN action from pt1
-    (forward_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes the FORWARD action from pt1
+    (forward1_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes 1 step FORWARD from pt1
+    (forward2_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes 2 steps FORWARD from pt1
+    (forward3_next ?pt1 ?pt2) : pt2 is the next location of the car when it takes 3 steps FORWARD from pt1
     (blocked ?pt) : The gridcell pt is occupied by a car and is "blocked".
     '''
     gen.addPredicate(name="at", parameters=(("pt1" , "gridcell"), ("car", "car")))
     gen.addPredicate(name="state_time", parameters=[("t1", "time")])
     gen.addPredicate(name="up_next", parameters=(("pt1" , "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
     gen.addPredicate(name="down_next", parameters=(("pt1" , "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
-    gen.addPredicate(name="forward3_next", parameters=(("pt1" , "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
-    gen.addPredicate(name="forward2_next", parameters=(("pt1", "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
     gen.addPredicate(name="forward1_next", parameters=(("pt1", "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
+    gen.addPredicate(name="forward2_next",
+                     parameters=(("pt1", "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
+    gen.addPredicate(name="forward3_next",
+                     parameters=(("pt1", "gridcell"), ("pt2", "gridcell"), ("t1", "time"), ("t2", "time")))
     gen.addPredicate(name="blocked", parameters=(("pt1", "gridcell"), ("t1", "time")), isLastPredicate=True)
 
     '''
@@ -365,17 +367,19 @@ def generateDomainPDDLFile(gen):
                   parameters=(("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
                   precondition_string="(and (not (blocked ?to ?toT)) (down_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
                   effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
+    gen.addAction(name="FORWARD1",
+                  parameters=(
+                  ("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
+                  precondition_string="(and (not (blocked ?to ?toT)) (forward1_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
+                  effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
+    gen.addAction(name="FORWARD2",
+                  parameters=(
+                  ("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
+                  precondition_string="(and (not (blocked ?to ?toT)) (forward2_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
+                  effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
     gen.addAction(name="FORWARD3",
                   parameters=(("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
                   precondition_string="(and (not (blocked ?to ?toT)) (forward3_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
-                  effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
-    gen.addAction(name="FORWARD2",
-                  parameters=(("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
-                  precondition_string="(and (not (blocked ?to ?toT)) (forward2_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
-                  effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
-    gen.addAction(name="FORWARD1",
-                  parameters=(("ag", "agent"), ("from", "gridcell"), ("to", "gridcell"), ("fromT", "time"), ("toT", "time")),
-                  precondition_string="(and (not (blocked ?to ?toT)) (forward1_next ?from ?to ?fromT ?toT) (at ?from ?ag) (state_time ?fromT))",
                   effect_string="(and (not (at ?from ?ag)) (at ?to ?ag) (not (state_time ?fromT)) (state_time ?toT))")
 
     gen.generateDomainPDDL()
