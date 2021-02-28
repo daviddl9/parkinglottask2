@@ -1,4 +1,6 @@
-SUBMISSION = False #Set this to true for submission. Set it to False if testing on your machine.
+# D David Livingston
+# Law Yong Qiang Clinton
+SUBMISSION = True #Set this to true for submission. Set it to False if testing on your machine.
 
 import gym
 import gym_grid_driving
@@ -228,13 +230,13 @@ class GeneratePDDL_Stationary :
         init_string = "(at pt{}pt{} agent1)".format(self.state.agent.position.x, self.state.agent.position.y)
         init_string += "(state_time t0)"
         for car in self.state.cars:
-            car_x, car_y, car_speed = car.position.x, abs(car.speed_range[0])
+            car_x, car_y, car_speed = car.position.x, car.position.y, abs(car.speed_range[0])
             init_string += "(blocked pt{}pt{} t{})".format(car_x, car_y, 0)
 
             max_time = abs(self.state.agent.position.x - self.state.finish_position.x)
             for t in range(1, max_time + 1):
                 for i in range(1, car_speed + 1):
-                    car_x = car_x - 1 if car_x - 1 >= 0 else car_x = car_x - 1 + self.width
+                    car_x = car_x - 1 if car_x - 1 >= 0 else car_x - 1 + self.width
                     init_string += "(blocked pt{}pt{} t{})".format(car_x, car.position.y, t)
 
         for w in range(self.width):
